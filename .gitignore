@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+
+# Local logs and generated test assets
+*.log
+test-assets/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Local deployment/cache folders
+.vercel/
+.netlify/
+supabase/.temp/
+
+# Planning-only documents
+AGENTS.md
+context1.md
+features.md
+ui.md
+ux.md
+PRD_features.md
