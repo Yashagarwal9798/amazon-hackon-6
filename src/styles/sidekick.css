@@ -4,32 +4,129 @@
   bottom: 92px;
   z-index: 29;
   display: grid;
-  gap: 4px;
-  min-width: 250px;
-  padding: 14px 16px;
-  color: #111827;
-  background: #ffd814;
-  border: 1px solid #f0b800;
-  border-radius: 8px;
-  box-shadow: 0 14px 38px rgba(17, 24, 39, 0.22);
+  justify-items: end;
+  gap: 10px;
+  padding: 0;
+  color: #071829;
+  background: transparent;
+  border: 0;
   cursor: pointer;
-  text-align: left;
 }
 
-.sidekick-launcher span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
+.sidekick-launcher-bubble {
+  position: relative;
+  max-width: 225px;
+  padding: 10px 13px;
+  color: #071829;
+  background: #ffffff;
+  border: 1px solid rgba(7, 24, 41, 0.1);
+  border-radius: 18px 18px 6px;
+  box-shadow: 0 16px 34px rgba(7, 24, 41, 0.18);
+  font-size: 14px;
   font-weight: 900;
+  line-height: 1.25;
 }
 
-.sidekick-launcher small {
-  color: #374151;
-  font-size: 13px;
+.sidekick-launcher-bubble::after {
+  position: absolute;
+  right: 20px;
+  bottom: -8px;
+  width: 15px;
+  height: 15px;
+  background: #ffffff;
+  border-right: 1px solid rgba(7, 24, 41, 0.1);
+  border-bottom: 1px solid rgba(7, 24, 41, 0.1);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.sidekick-bot-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  color: #071829;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.95) 0 12%, transparent 13%),
+    linear-gradient(145deg, #ffffff 0%, #fff7dc 56%, #ffd814 100%);
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow:
+    0 18px 38px rgba(7, 24, 41, 0.26),
+    inset 0 -7px 16px rgba(255, 138, 0, 0.22);
+}
+
+.sidekick-bot-avatar svg:last-child {
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+  color: #071829;
+  background: #ffd814;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 6px 14px rgba(7, 24, 41, 0.18);
+}
+
+.sidekick-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  display: grid;
+  place-items: center;
+  padding: 26px;
+  background: rgba(7, 24, 41, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.sidekick-popup-card {
+  position: relative;
+  width: min(580px, 92vw);
+  max-height: min(88dvh, 820px);
+}
+
+.sidekick-popup-image-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 32px;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.38);
+  cursor: pointer;
+}
+
+.sidekick-popup-image-button img {
+  display: block;
+  width: 100%;
+  max-height: min(88dvh, 820px);
+  object-fit: contain;
+}
+
+.sidekick-popup-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: #071829;
+  background: rgba(255, 255, 255, 0.88);
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 10px 22px rgba(7, 24, 41, 0.16);
+  cursor: pointer;
 }
 
 .sidekick-launcher:focus-visible,
+.sidekick-popup-image-button:focus-visible,
+.sidekick-popup-close:focus-visible,
 .sidekick-workspace button:focus-visible,
 .sidekick-workspace input:focus-visible {
   outline: 3px solid #ff9900;
@@ -1274,10 +1371,37 @@
   }
 
   .sidekick-launcher {
-    left: 14px;
     right: 14px;
-    bottom: 154px;
-    min-width: 0;
+    bottom: 112px;
+  }
+
+  .sidekick-launcher-bubble {
+    max-width: 188px;
+    font-size: 13px;
+  }
+
+  .sidekick-bot-avatar {
+    width: 64px;
+    height: 64px;
+  }
+
+  .sidekick-popup-overlay {
+    padding: 14px;
+  }
+
+  .sidekick-popup-card {
+    width: min(430px, 96vw);
+  }
+
+  .sidekick-popup-image-button {
+    border-radius: 24px;
+  }
+
+  .sidekick-popup-close {
+    top: 11px;
+    right: 11px;
+    width: 40px;
+    height: 40px;
   }
 }
 

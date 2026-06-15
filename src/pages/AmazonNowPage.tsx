@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Home, Menu, ShoppingCart, User, WalletCards } from "lucide-react";
+import { Home, Menu, ShoppingCart, User, WalletCards, X } from "lucide-react";
 import NowCategoryStrip from "../components/now/NowCategoryStrip";
 import NowHeader from "../components/now/NowHeader";
 import NowProductRail from "../components/now/NowProductRail";
@@ -17,6 +17,7 @@ import "../styles/sidekick.css";
 
 export default function AmazonNowPage() {
   const [isSidekickOpen, setIsSidekickOpen] = useState(false);
+  const [showSidekickIntro, setShowSidekickIntro] = useState(true);
   const [amazonCartSummary, setAmazonCartSummary] = useState({ count: 0, subtotal: 0 });
 
   useEffect(() => {
@@ -29,6 +30,11 @@ export default function AmazonNowPage() {
       count: items.reduce((total, item) => total + Number(item.quantity ?? 0), 0),
       subtotal: items.reduce((total, item) => total + Number(item.price ?? 0), 0),
     });
+  }
+
+  function openSidekick() {
+    setShowSidekickIntro(false);
+    setIsSidekickOpen(true);
   }
 
   return (
@@ -107,7 +113,25 @@ export default function AmazonNowPage() {
         <Link to="/now/cart">View cart</Link>
       </aside>
 
-      <SidekickLauncher onOpen={() => setIsSidekickOpen(true)} />
+      {showSidekickIntro && !isSidekickOpen ? (
+        <aside className="sidekick-popup-overlay" role="dialog" aria-modal="true" aria-label="Try Amazon Sidekick">
+          <div className="sidekick-popup-card">
+            <button
+              className="sidekick-popup-close"
+              type="button"
+              aria-label="Close Sidekick invite"
+              onClick={() => setShowSidekickIntro(false)}
+            >
+              <X size={22} />
+            </button>
+            <button className="sidekick-popup-image-button" type="button" onClick={openSidekick}>
+              <img src="/sidekick/popup.png" alt="Try Amazon Sidekick smart shopping assistant" />
+            </button>
+          </div>
+        </aside>
+      ) : null}
+
+      <SidekickLauncher onOpen={openSidekick} />
       {isSidekickOpen ? (
         <SidekickWorkspace
           onClose={() => setIsSidekickOpen(false)}

@@ -56,6 +56,7 @@ type CartPreviewMode = "mini" | "sidekick" | null;
 type SelectedCartItem = {
   source: "mini" | "sidekick";
   item: SidekickCartItem | SidekickSessionCartItem;
+  cartDraft?: SidekickCartDraft;
 };
 
 type ScheduleKind = "once" | "recurring";
@@ -130,10 +131,12 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SidekickChatMessage[]>([]);
   const [cartDraft, setCartDraft] = useState<SidekickCartDraft | null>(null);
+  const [miniCartHistory, setMiniCartHistory] = useState<SidekickCartDraft[]>([]);
   const [sidekickCartItems, setSidekickCartItems] = useState<SidekickSessionCartItem[]>([]);
   const [amazonCartItems, setAmazonCartItems] = useState<AmazonCartItem[]>([]);
   const [cartStage, setCartStage] = useState<CartStage>("empty");
   const [previewMode, setPreviewMode] = useState<CartPreviewMode>(null);
+  const [previewCartDraft, setPreviewCartDraft] = useState<SidekickCartDraft | null>(null);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -170,7 +173,7 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, cartDraft, isGenerating, errorMessage, cartNotice]);
+  }, [messages, cartDraft, miniCartHistory, isGenerating, errorMessage, cartNotice]);
 
   useEffect(() => {
     return () => {
@@ -207,9 +210,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       setCurrentSessionId(session.id);
       setMessages([]);
       setCartDraft(null);
+      setMiniCartHistory([]);
       setSidekickCartItems([]);
       setCartStage("empty");
       setPreviewMode(null);
+      setPreviewCartDraft(null);
       setCartNotice(null);
       setSelectedCartItem(null);
       setActiveMode(null);
@@ -228,9 +233,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       setCurrentSessionId(loaded.session.id);
       setMessages(loaded.messages);
       setCartDraft(loaded.cartDraft);
+      setMiniCartHistory(loaded.cartDraft ? [loaded.cartDraft] : []);
       setSidekickCartItems(loaded.sidekickCartItems);
       setCartStage(loaded.sidekickCartItems.length ? "sidekick" : getLoadedCartStage(loaded.cartDraft));
       setPreviewMode(null);
+      setPreviewCartDraft(null);
       setCartNotice(null);
       setSelectedCartItem(null);
       setActiveMode(findModeFromStoredValue(loaded.session.active_mode));
@@ -265,9 +272,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
         setCurrentSessionId(null);
         setMessages([]);
         setCartDraft(null);
+        setMiniCartHistory([]);
         setSidekickCartItems([]);
         setCartStage("empty");
         setPreviewMode(null);
+        setPreviewCartDraft(null);
         setCartNotice(null);
         setSelectedCartItem(null);
         setActiveMode(null);
@@ -303,7 +312,6 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
     setErrorMessage(null);
     setCartNotice(null);
     setInputStatus(null);
-    setCartDraft(null);
     setMessages((currentMessages) => [
       ...currentMessages,
       createOptimisticUserMessage(currentSessionId, message),
@@ -320,10 +328,25 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
 
       setCurrentSessionId(response.session.id);
       setMessages(response.messages);
-      setCartDraft(response.cartDraft);
+      const nextCartDraft = response.cartDraft;
+      if (nextCartDraft) {
+        setCartDraft(nextCartDraft);
+        setMiniCartHistory((drafts) => mergeMiniCartHistory(drafts, nextCartDraft));
+      } else {
+        setCartDraft(previousCartDraft);
+      }
       setSidekickCartItems(response.sidekickCartItems);
-      setCartStage(response.cartDraft ? "mini" : response.sidekickCartItems.length ? "sidekick" : "empty");
+      setCartStage(
+        response.cartDraft
+          ? "mini"
+          : response.sidekickCartItems.length
+            ? "sidekick"
+            : previousCartDraft
+              ? "mini"
+              : "empty",
+      );
       setPreviewMode(null);
+      setPreviewCartDraft(null);
       setSelectedCartItem(null);
       setActiveMode(findModeFromStoredValue(response.session.active_mode) ?? activeMode);
       await refreshSessions();
@@ -510,7 +533,6 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
     setErrorMessage(null);
     setCartNotice(null);
     setInputStatus("Reading grocery list image...");
-    setCartDraft(null);
     setMessages((currentMessages) => [
       ...currentMessages,
       createOptimisticUserMessage(currentSessionId, message),
@@ -530,10 +552,25 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
 
       setCurrentSessionId(response.session.id);
       setMessages(response.messages);
-      setCartDraft(response.cartDraft);
+      const nextCartDraft = response.cartDraft;
+      if (nextCartDraft) {
+        setCartDraft(nextCartDraft);
+        setMiniCartHistory((drafts) => mergeMiniCartHistory(drafts, nextCartDraft));
+      } else {
+        setCartDraft(previousCartDraft);
+      }
       setSidekickCartItems(response.sidekickCartItems);
-      setCartStage(response.cartDraft ? "mini" : response.sidekickCartItems.length ? "sidekick" : "empty");
+      setCartStage(
+        response.cartDraft
+          ? "mini"
+          : response.sidekickCartItems.length
+            ? "sidekick"
+            : previousCartDraft
+              ? "mini"
+              : "empty",
+      );
       setPreviewMode(null);
+      setPreviewCartDraft(null);
       setSelectedCartItem(null);
       setActiveMode(findModeFromStoredValue(response.session.active_mode));
       setInputStatus(response.cartDraft ? "Image list converted. Review the Mini Cart." : null);
@@ -548,16 +585,17 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
     }
   }
 
-  function handlePreviewMiniCart() {
-    if (!cartDraft) {
+  function handlePreviewMiniCart(targetCartDraft: SidekickCartDraft | null = cartDraft) {
+    if (!targetCartDraft) {
       return;
     }
 
+    setPreviewCartDraft(targetCartDraft);
     setPreviewMode("mini");
   }
 
-  async function handleAddToSidekickCart() {
-    if (!cartDraft) {
+  async function handleAddToSidekickCart(targetCartDraft: SidekickCartDraft | null = cartDraft) {
+    if (!targetCartDraft) {
       return;
     }
 
@@ -565,10 +603,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
     setErrorMessage(null);
 
     try {
-      const nextSidekickCartItems = await addMiniCartToSidekickCart(cartDraft);
+      const nextSidekickCartItems = await addMiniCartToSidekickCart(targetCartDraft);
       setSidekickCartItems(nextSidekickCartItems);
       setCartStage("sidekick");
       setPreviewMode(null);
+      setPreviewCartDraft(null);
       setCartNotice("Mini Cart merged into Sidekick Cart.");
       await refreshSessions();
     } catch (error) {
@@ -583,6 +622,7 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       return;
     }
 
+    setPreviewCartDraft(null);
     setPreviewMode("sidekick");
   }
 
@@ -600,6 +640,7 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       setSidekickCartItems([]);
       setCartStage("amazon");
       setPreviewMode(null);
+      setPreviewCartDraft(null);
       setCartNotice(`Added ${sidekickCartItems.length} Sidekick Cart items to Amazon Cart.`);
       onAmazonCartUpdated?.();
       await refreshSessions();
@@ -623,6 +664,7 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       setSidekickCartItems([]);
       setCartStage(cartDraft ? "mini" : "empty");
       setPreviewMode(null);
+      setPreviewCartDraft(null);
       setSelectedCartItem(null);
       setCartNotice("Sidekick Cart emptied.");
       await refreshSessions();
@@ -634,7 +676,9 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
   }
 
   async function handleQuantityChange(item: SidekickCartItem | SidekickSessionCartItem, quantity: number) {
-    if (previewMode === "mini" && !cartDraft) {
+    const targetCartDraft = previewMode === "mini" ? previewCartDraft ?? cartDraft : cartDraft;
+
+    if (previewMode === "mini" && !targetCartDraft) {
       return;
     }
 
@@ -645,9 +689,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       if (previewMode === "sidekick" && isSidekickSessionCartItem(item)) {
         const updatedItems = await updateSidekickCartItemQuantity(item, quantity);
         setSidekickCartItems(updatedItems);
-      } else if (cartDraft && isMiniCartItem(item)) {
-        const updatedCart = await updateCartItemQuantity(cartDraft, item, quantity);
-        setCartDraft(updatedCart);
+      } else if (targetCartDraft && isMiniCartItem(item)) {
+        const updatedCart = await updateCartItemQuantity(targetCartDraft, item, quantity);
+        setCartDraft((currentCartDraft) => (currentCartDraft?.id === updatedCart.id ? updatedCart : currentCartDraft));
+        setPreviewCartDraft((currentPreview) => (currentPreview?.id === updatedCart.id ? updatedCart : currentPreview));
+        setMiniCartHistory((drafts) => mergeMiniCartHistory(drafts, updatedCart));
       }
       setCartNotice("Quantity updated.");
     } catch (error) {
@@ -658,7 +704,9 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
   }
 
   async function handleRemoveItem(item: SidekickCartItem | SidekickSessionCartItem) {
-    if (previewMode === "mini" && !cartDraft) {
+    const targetCartDraft = previewMode === "mini" ? previewCartDraft ?? cartDraft : cartDraft;
+
+    if (previewMode === "mini" && !targetCartDraft) {
       return;
     }
 
@@ -669,9 +717,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       if (previewMode === "sidekick" && isSidekickSessionCartItem(item)) {
         const updatedItems = await removeSidekickCartItem(item);
         setSidekickCartItems(updatedItems);
-      } else if (cartDraft && isMiniCartItem(item)) {
-        const updatedCart = await removeCartItem(cartDraft, item.id);
-        setCartDraft(updatedCart);
+      } else if (targetCartDraft && isMiniCartItem(item)) {
+        const updatedCart = await removeCartItem(targetCartDraft, item.id);
+        setCartDraft((currentCartDraft) => (currentCartDraft?.id === updatedCart.id ? updatedCart : currentCartDraft));
+        setPreviewCartDraft((currentPreview) => (currentPreview?.id === updatedCart.id ? updatedCart : currentPreview));
+        setMiniCartHistory((drafts) => mergeMiniCartHistory(drafts, updatedCart));
       }
       setSelectedCartItem(null);
       setCartNotice("Item removed from cart.");
@@ -683,7 +733,9 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
   }
 
   async function handleReplaceItem(selection: SelectedCartItem, alternative: ProductAlternative) {
-    if (selection.source === "mini" && !cartDraft) {
+    const targetCartDraft = selection.source === "mini" ? selection.cartDraft ?? cartDraft : cartDraft;
+
+    if (selection.source === "mini" && !targetCartDraft) {
       return;
     }
 
@@ -694,9 +746,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       if (selection.source === "sidekick" && isSidekickSessionCartItem(selection.item)) {
         const updatedItems = await replaceSidekickCartItemProduct(selection.item, alternative);
         setSidekickCartItems(updatedItems);
-      } else if (cartDraft && isMiniCartItem(selection.item)) {
-        const updatedCart = await replaceCartItemProduct(cartDraft, selection.item, alternative);
-        setCartDraft(updatedCart);
+      } else if (targetCartDraft && isMiniCartItem(selection.item)) {
+        const updatedCart = await replaceCartItemProduct(targetCartDraft, selection.item, alternative);
+        setCartDraft((currentCartDraft) => (currentCartDraft?.id === updatedCart.id ? updatedCart : currentCartDraft));
+        setPreviewCartDraft((currentPreview) => (currentPreview?.id === updatedCart.id ? updatedCart : currentPreview));
+        setMiniCartHistory((drafts) => mergeMiniCartHistory(drafts, updatedCart));
       }
       setSelectedCartItem(null);
       setCartNotice("Product changed.");
@@ -707,9 +761,11 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
     }
   }
 
-  const isLatestMiniCartAdded = Boolean(
-    cartDraft && sidekickCartItems.some((item) => item.source_cart_draft_ids.includes(cartDraft.id)),
-  );
+  const displayedMiniCarts = miniCartHistory;
+  const activePreviewCartDraft = previewMode === "mini" ? previewCartDraft ?? cartDraft : null;
+  const isMiniCartAdded = (targetCartDraft: SidekickCartDraft) =>
+    sidekickCartItems.some((item) => item.source_cart_draft_ids.includes(targetCartDraft.id));
+  const isPreviewMiniCartAdded = Boolean(activePreviewCartDraft && isMiniCartAdded(activePreviewCartDraft));
   const canPreviewSidekickCart = sidekickCartItems.length > 0;
   const canAddToAmazonCart = sidekickCartItems.length > 0;
   const panelStage: CartStage =
@@ -729,12 +785,22 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
       : panelStage === "sidekick"
         ? "Sidekick Cart"
         : cartDraft?.title ?? "No cart yet";
-  const previewItems = previewMode === "sidekick" ? sidekickCartItems : cartDraft?.items ?? [];
-  const previewSubtotal = previewMode === "sidekick" ? sumPrices(sidekickCartItems) : cartDraft?.subtotal ?? 0;
-  const previewTitle = previewMode === "sidekick" ? "Sidekick Cart" : cartDraft?.title ?? "Mini Cart";
+  const previewItems = previewMode === "sidekick" ? sidekickCartItems : activePreviewCartDraft?.items ?? [];
+  const previewSubtotal = previewMode === "sidekick" ? sumPrices(sidekickCartItems) : activePreviewCartDraft?.subtotal ?? 0;
+  const previewTitle = previewMode === "sidekick" ? "Sidekick Cart" : activePreviewCartDraft?.title ?? "Mini Cart";
 
   return (
-    <div className="sidekick-overlay" role="dialog" aria-modal="true" aria-label="Amazon Sidekick workspace">
+    <div
+      className="sidekick-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Amazon Sidekick workspace"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="sidekick-workspace">
         <aside className="sidekick-sidebar">
           <div className="sidekick-brand">
@@ -843,40 +909,46 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
               </div>
             )}
 
-            {cartDraft?.items.length && !isGenerating ? (
-              <article className="sidekick-message assistant wide">
-                <span>Mini Cart</span>
-                <p className="progress-line">
-                  Matched {cartDraft.items.length} ingredients to products. Review the cards before adding them to
-                  your Sidekick Cart.
-                </p>
+            {displayedMiniCarts.map((draft, index) => {
+              const isLatestMiniCart = index === displayedMiniCarts.length - 1;
+              const isAddedToSidekickCart = isMiniCartAdded(draft);
 
-                <div className="sidekick-products">
-                  {cartDraft.items.map((item) => (
-                    <ProductRecommendationCard
-                      product={mapCartItemToProductCard(item)}
-                      key={item.id}
-                      onChange={() => setSelectedCartItem({ source: "mini", item })}
-                    />
-                  ))}
-                </div>
+              return (
+                <article className="sidekick-message assistant wide mini-cart-message" key={draft.id}>
+                  <span>{isLatestMiniCart ? "Mini Cart" : "Previous Mini Cart"}</span>
+                  <p className="progress-line">
+                    {isGenerating && isLatestMiniCart
+                      ? "Keeping this Mini Cart visible while Sidekick builds the next one."
+                      : `Matched ${draft.items.length} ingredients to products. Review the cards before adding them to your Sidekick Cart.`}
+                  </p>
 
-                <div className="mini-cart-actions">
-                  <button type="button" onClick={handlePreviewMiniCart}>
-                    <Eye size={16} />
-                    Preview Mini Cart
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleAddToSidekickCart()}
-                    disabled={isLatestMiniCartAdded || isLoading}
-                  >
-                    <CheckCircle2 size={16} />
-                    {isLatestMiniCartAdded ? "Added to Sidekick Cart" : "Add to Sidekick Cart"}
-                  </button>
-                </div>
-              </article>
-            ) : null}
+                  <div className="sidekick-products">
+                    {draft.items.map((item) => (
+                      <ProductRecommendationCard
+                        product={mapCartItemToProductCard(item)}
+                        key={item.id}
+                        onChange={() => setSelectedCartItem({ source: "mini", item, cartDraft: draft })}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="mini-cart-actions">
+                    <button type="button" onClick={() => handlePreviewMiniCart(draft)}>
+                      <Eye size={16} />
+                      Preview Mini Cart
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleAddToSidekickCart(draft)}
+                      disabled={isAddedToSidekickCart || isLoading}
+                    >
+                      <CheckCircle2 size={16} />
+                      {isAddedToSidekickCart ? "Added to Sidekick Cart" : "Add to Sidekick Cart"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
 
             {isGenerating ? (
               <article className="sidekick-message assistant">
@@ -1233,7 +1305,14 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
                 <h3>{previewTitle}</h3>
                 <p>Total Rs.{formatPrice(previewSubtotal)}</p>
               </div>
-              <button type="button" aria-label="Close cart preview" onClick={() => setPreviewMode(null)}>
+              <button
+                type="button"
+                aria-label="Close cart preview"
+                onClick={() => {
+                  setPreviewMode(null);
+                  setPreviewCartDraft(null);
+                }}
+              >
                 <X size={18} />
               </button>
             </div>
@@ -1266,7 +1345,13 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
                       </button>
                       <button
                         type="button"
-                        onClick={() => setSelectedCartItem({ source: previewMode, item })}
+                        onClick={() =>
+                          setSelectedCartItem({
+                            source: previewMode,
+                            item,
+                            cartDraft: previewMode === "mini" ? activePreviewCartDraft ?? undefined : undefined,
+                          })
+                        }
                         disabled={isLoading}
                       >
                         Change
@@ -1286,10 +1371,10 @@ export default function SidekickWorkspace({ onClose, onAmazonCartUpdated }: Side
               {previewMode === "mini" ? (
                 <button
                   type="button"
-                  onClick={() => void handleAddToSidekickCart()}
-                  disabled={!cartDraft || isLatestMiniCartAdded || isLoading}
+                  onClick={() => void handleAddToSidekickCart(activePreviewCartDraft)}
+                  disabled={!activePreviewCartDraft || isPreviewMiniCartAdded || isLoading}
                 >
-                  {isLatestMiniCartAdded ? "Added to Sidekick Cart" : "Add to Sidekick Cart"}
+                  {isPreviewMiniCartAdded ? "Added to Sidekick Cart" : "Add to Sidekick Cart"}
                 </button>
               ) : (
                 <button type="button" onClick={() => void handleAddToAmazonCart()} disabled={!canAddToAmazonCart || isLoading}>
@@ -1572,6 +1657,18 @@ function createOptimisticUserMessage(sessionId: string | null, content: string):
     metadata: {},
     created_at: new Date().toISOString(),
   };
+}
+
+function mergeMiniCartHistory(drafts: SidekickCartDraft[], nextDraft: SidekickCartDraft) {
+  const existingIndex = drafts.findIndex((draft) => draft.id === nextDraft.id);
+
+  if (existingIndex === -1) {
+    return [...drafts, nextDraft];
+  }
+
+  const nextDrafts = [...drafts];
+  nextDrafts[existingIndex] = nextDraft;
+  return nextDrafts;
 }
 
 function getLoadedCartStage(cartDraft: SidekickCartDraft | null): CartStage {

@@ -487,51 +487,71 @@ Read the attached grocery list image${imageName ? ` named ${imageName}` : ""}. E
     }
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": Deno.env.get("SITE_URL") ?? "http://localhost:5173",
-      "X-Title": "Amazon Sidekick",
-      "X-OpenRouter-Title": "Amazon Sidekick",
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      max_tokens: 1100,
-      messages: [
-        {
-          role: "system",
-          content: createSystemPrompt(
-            recipeContext,
-            occasionContext,
-            healthcareContext,
-            emergencyContext,
-            currentRequest,
-            selectedMode,
-            Boolean(imageDataUrl),
-            imageName,
-          ),
-        },
-        ...conversation,
-      ],
-    }),
+  const requestBody = JSON.stringify({
+    model,
+    temperature: 0.2,
+    max_tokens: 1600,
+    messages: [
+      {
+        role: "system",
+        content: createSystemPrompt(
+          recipeContext,
+          occasionContext,
+          healthcareContext,
+          emergencyContext,
+          currentRequest,
+          selectedMode,
+          Boolean(imageDataUrl),
+          imageName,
+        ),
+      },
+      ...conversation,
+    ],
   });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter request failed: ${response.status} ${errorText}`);
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": Deno.env.get("SITE_URL") ?? "http://localhost:5173",
+          "X-Title": "Amazon Sidekick",
+          "X-OpenRouter-Title": "Amazon Sidekick",
+        },
+        body: requestBody,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter request failed: ${response.status} ${errorText}`);
+      }
+
+      const payload = await response.json();
+      const content = payload?.choices?.[0]?.message?.content;
+
+      if (!content || typeof content !== "string") {
+        throw new Error("OpenRouter response did not include message content.");
+      }
+
+      return normalizePlan(parseModelJson(content));
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Unknown OpenRouter error.");
+      console.warn(`OpenRouter attempt ${attempt} failed: ${lastError.message}`);
+
+      if (attempt < 2) {
+        await delay(700);
+      }
+    }
   }
 
-  const payload = await response.json();
-  const content = payload?.choices?.[0]?.message?.content;
+  throw lastError ?? new Error("OpenRouter request failed.");
+}
 
-  if (!content || typeof content !== "string") {
-    throw new Error("OpenRouter response did not include message content.");
-  }
-
-  return normalizePlan(parseModelJson(content));
+function delay(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function createSystemPrompt(
