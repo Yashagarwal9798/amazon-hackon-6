@@ -533,7 +533,7 @@ graph LR
     User -->|"Describe need"| T1
     T1 -->|"Add to Sidekick Cart\n(addMiniCartToSidekickCart)"| T2
     T2 -->|"Commit\n(commitSidekickCart)"| T3
-    T3 -->|"Proceed to Checkout"| CHECKOUT[/now/cart]
+    T3 -->|"Proceed to Checkout"| CHECKOUT["/now/cart"]
 
     style T1 fill:#FFF3CD
     style T2 fill:#D4EDDA
