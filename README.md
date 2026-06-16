@@ -2,6 +2,8 @@
 
 > **Amazon HackOn Season 6** submission — An intelligent shopping assistant embedded in Amazon Now that builds smart grocery carts through natural language, image uploads, recipes, occasions, emergency kits, and healthcare templates.
 
+**Live Demo:** [amazon-hackon-6.vercel.app](https://amazon-hackon-6.vercel.app/)
+
 ---
 
 ## Table of Contents
@@ -819,6 +821,8 @@ The `vercel.json` configures SPA routing so all paths resolve to `index.html`:
   "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }
 ```
+
+**Deployed at:** [https://amazon-hackon-6.vercel.app/](https://amazon-hackon-6.vercel.app/)
 
 Deploy with:
 
