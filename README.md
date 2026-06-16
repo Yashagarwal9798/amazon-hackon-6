@@ -36,6 +36,10 @@ User Request → AI Analysis → Mini Cart → User Review → Sidekick Cart →
 
 Each tier gives users transparency and control before committing to a purchase.
 
+### Sidekick Workspace
+
+![Amazon Sidekick Workspace](public/sidekick/workspace-screenshot.png)
+
 ---
 
 ## System Architecture
